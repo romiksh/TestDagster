@@ -12,13 +12,13 @@ locals {
 }
 
 resource "aws_ecs_task_definition" "dagster" {
-  family                   = "${local.name}-task"
-  cpu                      = 512
-  memory                   = 1024
+  family             = "${local.name}-task"
+  cpu                = 512
+  memory             = 1024
   requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  execution_role_arn       = aws_iam_role.exec.arn
-  task_role_arn            = aws_iam_role.task.arn
+  network_mode       = "awsvpc"
+  execution_role_arn = aws_iam_role.exec.arn
+  task_role_arn      = aws_iam_role.task.arn
   runtime_platform {
     operating_system_family = "LINUX"
     cpu_architecture        = "X86_64"
@@ -26,18 +26,52 @@ resource "aws_ecs_task_definition" "dagster" {
 
 
   container_definitions = jsonencode([
-    { "name" : "web", "image" : local.image_uri, "essential" : true,
-      "command" : ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/opt/dagster/dagster_home/workspace.yaml"],
+    {
+      "name" : "web", "image" : local.image_uri, "essential" : true,
+      "command" : [
+        "dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/opt/dagster/dagster_home/workspace.yaml"
+      ],
       "portMappings" : [{ "containerPort" : 3000, "protocol" : "tcp" }],
-      "environment" : [{ "name" : "DAGSTER_HOME", "value" : "/opt/dagster/dagster_home" }, { "name" : "DAGSTER_POSTGRES_HOST", "value" : aws_db_instance.postgres.address }, { "name" : "DAGSTER_POSTGRES_DB", "value" : var.db_name }],
-      "secrets" : [{ "name" : "DAGSTER_POSTGRES_USER", "valueFrom" : aws_secretsmanager_secret.db.arn }, { "name" : "DAGSTER_POSTGRES_PASSWORD", "valueFrom" : aws_secretsmanager_secret.db.arn }],
-      "logConfiguration" : { "logDriver" : "awslogs", "options" : { "awslogs-group" : aws_cloudwatch_log_group.this.name, "awslogs-region" : var.region, "awslogs-stream-prefix" : "web" } }
+      "environment" : [
+        { "name" : "DAGSTER_HOME", "value" : "/opt/dagster/dagster_home" },
+        { "name" : "DAGSTER_POSTGRES_HOST", "value" : aws_db_instance.postgres.address },
+        { "name" : "DAGSTER_POSTGRES_DB", "value" : var.db_name }
+      ],
+      "secrets" : [
+        {
+          "name" : "DAGSTER_POSTGRES_USER",
+          "valueFrom" : "${aws_secretsmanager_secret.db.arn}:username::"
+        },
+        {
+          "name" : "DAGSTER_POSTGRES_PASSWORD",
+          "valueFrom" : "${aws_secretsmanager_secret.db.arn}:password::"
+        }
+      ],
+      "logConfiguration" : {
+        "logDriver" : "awslogs", "options" : {
+          "awslogs-group" : aws_cloudwatch_log_group.this.name, "awslogs-region" : var.region,
+          "awslogs-stream-prefix" : "web"
+        }
+      }
     },
-    { "name" : "daemon", "image" : local.image_uri, "essential" : true,
+    {
+      "name" : "daemon", "image" : local.image_uri, "essential" : true,
       "command" : ["dagster-daemon", "run"],
-      "environment" : [{ "name" : "DAGSTER_HOME", "value" : "/opt/dagster/dagster_home" }, { "name" : "DAGSTER_POSTGRES_HOST", "value" : aws_db_instance.postgres.address }, { "name" : "DAGSTER_POSTGRES_DB", "value" : var.db_name }],
-      "secrets" : [{ "name" : "DAGSTER_POSTGRES_USER", "valueFrom" : aws_secretsmanager_secret.db.arn }, { "name" : "DAGSTER_POSTGRES_PASSWORD", "valueFrom" : aws_secretsmanager_secret.db.arn }],
-      "logConfiguration" : { "logDriver" : "awslogs", "options" : { "awslogs-group" : aws_cloudwatch_log_group.this.name, "awslogs-region" : var.region, "awslogs-stream-prefix" : "daemon" } }
+      "environment" : [
+        { "name" : "DAGSTER_HOME", "value" : "/opt/dagster/dagster_home" },
+        { "name" : "DAGSTER_POSTGRES_HOST", "value" : aws_db_instance.postgres.address },
+        { "name" : "DAGSTER_POSTGRES_DB", "value" : var.db_name }
+      ],
+      "secrets" : [
+        { "name": "DAGSTER_POSTGRES_USER",     "valueFrom": "${aws_secretsmanager_secret.db.arn}:username::" },
+        { "name": "DAGSTER_POSTGRES_PASSWORD", "valueFrom": "${aws_secretsmanager_secret.db.arn}:password::" }
+      ],
+      "logConfiguration" : {
+        "logDriver" : "awslogs", "options" : {
+          "awslogs-group" : aws_cloudwatch_log_group.this.name, "awslogs-region" : var.region,
+          "awslogs-stream-prefix" : "daemon"
+        }
+      }
     }
   ])
   tags = local.tags
@@ -50,8 +84,8 @@ resource "aws_ecs_service" "dagster" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.private["a"].id, aws_subnet.private["b"].id]
-    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets = [aws_subnet.private["a"].id, aws_subnet.private["b"].id]
+    security_groups = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
 
@@ -61,5 +95,5 @@ resource "aws_ecs_service" "dagster" {
     container_port   = 3000
   }
   depends_on = [aws_lb_listener.http]
-  tags       = local.tags
+  tags = local.tags
 }
