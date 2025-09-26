@@ -56,7 +56,7 @@ resource "aws_ecs_task_definition" "dagster" {
     },
     {
       "name" : "daemon", "image" : local.image_uri, "essential" : true,
-      "command" : ["dagster-daemon", "run"],
+      "command" : ["dagster-daemon", "run" , "-w", "/opt/dagster/dagster_home/workspace.yaml"],
       "environment" : [
         { "name" : "DAGSTER_HOME", "value" : "/opt/dagster/dagster_home" },
         { "name" : "DAGSTER_POSTGRES_HOST", "value" : aws_db_instance.postgres.address },
