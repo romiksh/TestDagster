@@ -5,6 +5,7 @@ ENV DAGSTER_HOME=/opt/dagster/dagster_home
 RUN mkdir -p $DAGSTER_HOME
 COPY user_data/dagster_home/dagster.yaml   $DAGSTER_HOME/dagster.yaml
 COPY user_data/dagster_home/workspace.yaml $DAGSTER_HOME/workspace.yaml
+COPY user_data/dagster_home/repository.py $DAGSTER_HOME/repository.py
 WORKDIR /app
 COPY app /app
 CMD ["dagster-webserver","-h","0.0.0.0","-p","3000","-w","/opt/dagster/dagster_home/workspace.yaml"]
