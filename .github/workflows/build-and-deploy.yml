@@ -1,0 +1,64 @@
+name: Build and Deploy Dagster to ECS
+
+on:
+#  push:
+#    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  IMAGE_NAME: dagster-app
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set short SHA
+        id: vars
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init (target ECR)
+        working-directory: infra
+        run: terraform init
+
+      - name: Terraform Apply (create ECR only)
+        working-directory: infra
+        run: terraform apply -auto-approve -target=aws_ecr_repository.app
+
+      - name: Build, Tag and Push Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_URI_SHA: ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.SHORT_SHA }}
+          IMAGE_URI_LATEST: ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:latest
+        run: |
+          docker build -f docker/Dockerfile -t "$IMAGE_URI_SHA" -t "$IMAGE_URI_LATEST" .
+          docker push "$IMAGE_URI_SHA"
+          docker push "$IMAGE_URI_LATEST"
+
+      - name: Terraform Apply (full infra)
+        working-directory: infra
+        env:
+          TF_VAR_image_tag: ${{ steps.vars.outputs.SHORT_SHA }}
+        run: terraform apply -auto-approve
