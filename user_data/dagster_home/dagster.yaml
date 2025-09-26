@@ -1,0 +1,18 @@
+storage:
+  postgres:
+    postgres_db:
+      username: ${DAGSTER_POSTGRES_USER}
+      password: ${DAGSTER_POSTGRES_PASSWORD}
+      hostname: ${DAGSTER_POSTGRES_HOST}
+      db_name: ${DAGSTER_POSTGRES_DB}
+      port: 5432
+run_launcher:
+  module: "dagster_aws.ecs"
+  class: "EcsRunLauncher"
+  config:
+    run_resources:
+      cpu: "512"
+      memory: "1024"
+    secrets_tag: "dagster"
+telemetry:
+  enabled: false
