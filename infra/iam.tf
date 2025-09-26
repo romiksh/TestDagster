@@ -109,6 +109,16 @@ data "aws_iam_policy_document" "gha_permissions" {
     actions   = ["iam:PassRole"]
     resources = [aws_iam_role.task.arn, aws_iam_role.exec.arn]
   }
+  statement {
+    sid     = "ECRTagging"
+    effect  = "Allow"
+    actions = [
+      "ecr:TagResource",
+      "ecr:UntagResource",
+      "ecr:ListTagsForResource"
+    ]
+    resources = ["*"]
+  }
 }
 resource "aws_iam_policy" "gha_policy" {
   name   = "${local.name}-gha-deploy-policy"

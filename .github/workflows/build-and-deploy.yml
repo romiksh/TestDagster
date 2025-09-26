@@ -43,9 +43,27 @@ jobs:
         working-directory: infra
         run: terraform init
 
-      - name: Terraform Apply (create ECR only)
+#      - name: Terraform Apply (create ECR only)
+#        working-directory: infra
+#        run: terraform apply -auto-approve -target=aws_ecr_repository.app
+
+      - name: Import existing ECR if needed
         working-directory: infra
-        run: terraform apply -auto-approve -target=aws_ecr_repository.app
+        env:
+          REPO_NAME: dagster-app
+        run: |
+          # Is the resource already tracked in state?
+            if ! terraform state list | grep -q '^aws_ecr_repository\.app$'; then
+          # Does it exist in AWS?
+            if aws ecr describe-repositories --repository-names "$REPO_NAME" >/dev/null 2>&1; then
+          echo "ECR '$REPO_NAME' exists in AWS but not in state — importing..."
+          terraform import aws_ecr_repository.app "$REPO_NAME"
+          else
+          echo "ECR '$REPO_NAME' not found in AWS — Terraform will create it."
+          fi
+          else
+          echo "ECR already tracked in state."
+          fi
 
       - name: Build, Tag and Push Image
         env:
