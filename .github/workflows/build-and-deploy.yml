@@ -75,8 +75,8 @@ jobs:
           docker push "$IMAGE_URI_SHA"
           docker push "$IMAGE_URI_LATEST"
 
-      - name: Terraform Apply (full infra)
-        working-directory: infra
-        env:
-          TF_VAR_image_tag: ${{ steps.vars.outputs.SHORT_SHA }}
-        run: terraform apply -auto-approve
+#      - name: Terraform Apply (full infra)
+#        working-directory: infra
+#        env:
+#          TF_VAR_image_tag: ${{ steps.vars.outputs.SHORT_SHA }}
+#        run: terraform apply -auto-approve
